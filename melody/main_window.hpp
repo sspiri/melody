@@ -46,6 +46,11 @@ private slots:
     void show_error_message(const QString& message);
 
 private:
+    struct iter_pair{
+        track_iterator* iterator;
+        progress_widget* progress;
+    };
+
     settings_t settings;
 
     QWidget* central{new QWidget{this}};
@@ -53,14 +58,14 @@ private:
     QTabWidget* tabs{new QTabWidget{this}};
     player_widget* player{new player_widget{this}};
 
-    std::unordered_map<track_iterator*, progress_widget*> iterators{};
+    std::unordered_map<files_list*, iter_pair> iterators{};
 
     void set_layout();
     void set_connections();
 
     files_list* create_tab(const QString& name);
 
-    void load_files(track_iterator* thread);
+    void load_files(files_list* list);
     void cancel_all();
 
     void load_playlists();

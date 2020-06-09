@@ -103,9 +103,9 @@ void main_window::open_playlist(){
         reader->construct_playlist();
 
         auto* progress = new progress_widget{reader, reader->filepaths.size()};
-        iterators[reader] = progress;
+        iterators[list] = {reader, progress};
 
-        load_files(reader);
+        load_files(list);
     }
 }
 
@@ -145,6 +145,11 @@ files_list* main_window::create_tab(const QString& name){
 void main_window::browse_tracks(){
     auto* list = (files_list*)tabs->currentWidget();
 
+    if(iterators.find(list) != iterators.end()){
+        QMessageBox::critical(this, "Error", "Please wait while all tracks are fully loaded.");
+        return;
+    }
+
     if(list){
         QStringList music_location = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
         QStringList files = QFileDialog::getOpenFileNames(this, "Select one or more files", music_location.size() > 0 ? music_location[0] : QDir::homePath());
@@ -158,8 +163,8 @@ void main_window::browse_tracks(){
             auto* thread = new playlist_writer{save_filepath, files, this};
             auto* progress = new progress_widget{thread, number_of_regular_files(files)};
 
-            iterators[thread] = progress;
-            load_files(thread);
+            iterators[list] = {thread, progress};
+            load_files(list);
         }
     }
 }
@@ -167,6 +172,11 @@ void main_window::browse_tracks(){
 
 void main_window::browse_library(){
     auto* list = (files_list*)tabs->currentWidget();
+
+    if(iterators.find(list) != iterators.end()){
+        QMessageBox::critical(this, "Error", "Please wait while all tracks are fully loaded.");
+        return;
+    }
 
     if(list){
         QStringList music_location = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
@@ -183,30 +193,26 @@ void main_window::browse_library(){
             auto* thread = new playlist_writer{save_filepath, {filepath}, this};
             auto* progress = new progress_widget{thread, nfiles};
 
-            iterators[thread] = progress;
-            load_files(thread);
+            iterators[list] = {thread, progress};
+            load_files(list);
         }
     }
 }
 
 
-void main_window::load_files(track_iterator* thread){
-    auto* list = (files_list*)tabs->currentWidget();
+void main_window::load_files(files_list* list){
+    iterators[list].progress->setAttribute(Qt::WA_DeleteOnClose);
 
-    if(list){
-        iterators[thread]->setAttribute(Qt::WA_DeleteOnClose);
+    connect(iterators[list].iterator, &playlist_writer::new_track, list, &files_list::add_track, Qt::BlockingQueuedConnection);
+    connect(iterators[list].iterator, &playlist_writer::new_track, iterators[list].progress, &progress_widget::process, Qt::BlockingQueuedConnection);
+    connect(iterators[list].iterator, &playlist_writer::error, iterators[list].progress->error_output, &QPlainTextEdit::appendPlainText, Qt::BlockingQueuedConnection);
 
-        connect(thread, &playlist_writer::new_track, list, &files_list::add_track, Qt::BlockingQueuedConnection);
-        connect(thread, &playlist_writer::new_track, iterators[thread], &progress_widget::process, Qt::BlockingQueuedConnection);
-        connect(thread, &playlist_writer::error, iterators[thread]->error_output, &QPlainTextEdit::appendPlainText, Qt::BlockingQueuedConnection);
+    connect(iterators[list].iterator, &QThread::finished, [this, list]{ iterators.erase(list); });
+    connect(iterators[list].iterator, &QThread::finished, iterators[list].progress, &QWidget::close);
+    connect(iterators[list].iterator, &QThread::finished, iterators[list].iterator, &QThread::deleteLater);
 
-        connect(thread, &QThread::finished, [this, thread]{ iterators.erase(thread); });
-        connect(thread, &QThread::finished, iterators[thread], &QWidget::close);
-        connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-
-        iterators[thread]->show();
-        thread->start();
-    }
+    iterators[list].progress->show();
+    iterators[list].iterator->start();
 }
 
 
@@ -253,9 +259,9 @@ void main_window::load_playlists(){
             reader->construct_playlist();
 
             auto* progress = new progress_widget{reader, reader->filepaths.size()};
-            iterators[reader] = progress;
+            iterators[list] = {reader, progress};
 
-            load_files(reader);
+            load_files(list);
         }
     }
 }
@@ -263,23 +269,32 @@ void main_window::load_playlists(){
 
 void main_window::close_tab(int index){
     QString name = tabs->tabText(index);
+    auto* list = (files_list*)tabs->widget(index);
 
     int ret = QMessageBox::warning(this, "Warning", "Do you want to remove this playlist (" + name + ") from local storage?",
                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
     if(ret == QMessageBox::Yes){
         fs::remove(settings.config_dir.absoluteFilePath(name).toStdString());
+
+        if(iterators.find(list) != iterators.end())
+            iterators[list].iterator->cancel();
+
         tabs->removeTab(index);
     }
 
-    else if(ret == QMessageBox::No)
+    else if(ret == QMessageBox::No){
+        if(iterators.find(list) != iterators.end())
+            iterators[list].iterator->cancel();
+
         tabs->removeTab(index);
+    }
 }
 
 
 void main_window::cancel_all(){
     for(auto& it : iterators){
-        if(it.first && it.first->isRunning())
-            it.first->cancel();
+        if(it.second.iterator && it.second.iterator->isRunning())
+            it.second.iterator->cancel();
     }
 }
