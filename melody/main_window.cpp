@@ -304,10 +304,22 @@ void main_window::on_search(){
 void main_window::select_next_row(int value){
     if(value == QMediaPlayer::EndOfMedia){
         for(int n{}; n < tabs->count(); ++n){
-            auto* p = (files_list*)tabs->widget(n);
+            auto* list = (files_list*)tabs->widget(n);
 
-            if(p->playlist == player->player->playlist())
-                p->selectRow(p->currentRow() + 1);
+            if(list->playlist == player->player->playlist()){
+                int n = list->currentRow() + 1;
+
+                while(list->isRowHidden(n))
+                    ++n;
+
+                if(n > list->currentRow() + 1){
+                    list->selectRow(n);
+                    play();
+                }
+
+                else
+                    list->selectRow(n);
+            }
         }
     }
 }
