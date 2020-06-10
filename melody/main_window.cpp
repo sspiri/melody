@@ -30,6 +30,7 @@ main_window::main_window(){
 
     tabs->setMovable(true);
     tabs->setTabsClosable(true);
+    tabs->setContextMenuPolicy(Qt::CustomContextMenu);
 
     if(settings.config_dir.exists())
         load_playlists();
@@ -86,7 +87,7 @@ void main_window::set_connections(){
     });
 
     connect(tabs, &QTabWidget::tabCloseRequested, this, &main_window::close_tab);
-    connect(tabs, &QTabWidget::tabBarClicked, this, &main_window::tab_context_menu);
+    connect(tabs, &QTabWidget::customContextMenuRequested, this, &main_window::tab_context_menu);
 
     connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
@@ -294,26 +295,30 @@ void main_window::close_tab(int index){
 }
 
 
-void main_window::tab_context_menu(int index){
+void main_window::tab_context_menu(const QPoint& point){
     QMenu* menu = new QMenu{this};
+    int index = tabs->tabBar()->tabAt(point);
 
-    connect(menu->addAction("Rename..."), &QAction::triggered, [this, index]{
-        auto* dialog = new name_dialog{this};
+    if(index > -1){
+        connect(menu->addAction("Rename..."), &QAction::triggered, [this, index]{
+            auto* dialog = new name_dialog{this};
 
-        if(dialog->exec() == QDialog::Accepted){
-            QString old_name = tabs->tabText(index);
-            tabs->setTabText(index, dialog->get_name());
-            settings.config_dir.rename(old_name, tabs->tabText(index));
-        }
+            if(dialog->exec() == QDialog::Accepted){
+                QString old_name = tabs->tabText(index);
+                tabs->setTabText(index, dialog->get_name());
+                settings.config_dir.rename(old_name, tabs->tabText(index));
+            }
 
-        dialog->deleteLater();
-    });
+            dialog->deleteLater();
+        });
 
-    connect(menu->addAction("Remove"), &QAction::triggered, [this, index]{
-        close_tab(index);
-    });
+        connect(menu->addAction("Remove"), &QAction::triggered, [this, index]{
+            close_tab(index);
+        });
 
-    menu->exec(QCursor::pos());
+        menu->exec(QCursor::pos());
+    }
+
     menu->deleteLater();
 }
 

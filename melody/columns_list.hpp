@@ -6,6 +6,7 @@
 
 #include <QTableWidget>
 #include <QHeaderView>
+#include <QMenu>
 
 
 class columns_list : public QTableWidget{
@@ -28,8 +29,48 @@ public:
 
     virtual ~columns_list() {}
 
+private slots:
+    void open_context_menu(const QPoint& ){
+        menu->exec(QCursor::pos());
+    }
+
+    int get_index_by_label(const QString& label){
+        for(int n{}; n < horizontalHeader()->count(); ++n){
+            if(horizontalHeaderItem(n)->text() == label)
+                return n;
+        }
+
+        return -1;
+    }
+
 private:
+    QMenu* menu{new QMenu{this}};
+
+    void setup_context_menu(){
+        auto create_action = [this](const QString& label){
+            auto* action = menu->addAction("Show " + label);
+            action->setCheckable(true);
+            action->setChecked(true);
+
+            connect(action, &QAction::triggered, [this, label, action]{
+                if(action->isChecked())
+                    horizontalHeader()->showSection(get_index_by_label(label));
+                else
+                    horizontalHeader()->hideSection(get_index_by_label(label));
+            });
+        };
+
+        create_action("Artist");
+        create_action("Genre");
+        create_action("Album");
+        create_action("Duration");
+    }
+
     void setup_columns_list(const QStringList& labels){
+        horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(horizontalHeader(), &QHeaderView::customContextMenuRequested, this, &columns_list::open_context_menu);
+        setup_context_menu();
+
         setSelectionBehavior(QTableWidget::SelectRows);
         setHorizontalHeaderLabels(labels);
 

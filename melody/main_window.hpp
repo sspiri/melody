@@ -43,7 +43,7 @@ private slots:
     void select_next_row(int value);
 
     void close_tab(int index);
-    void tab_context_menu(int index);
+    void tab_context_menu(const QPoint& point);
 
     void on_search();
 
