@@ -6,7 +6,7 @@ int main(int argc, char** argv){
     QApplication melody{argc, argv};
 
     main_window window;
-    window.resize(1200, 800);
+    window.showMaximized();
     window.show();
 
     return melody.exec();

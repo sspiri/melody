@@ -5,8 +5,12 @@
 
 
 player_widget::player_widget(QWidget* parent) : QWidget{parent}{
-    slider->setRange(0, 1000);
-    slider->setEnabled(false);
+    duration_slider->setRange(0, 1000);
+    duration_slider->setEnabled(false);
+
+    volume_slider->setRange(0, 100);
+    volume_slider->setValue(player->volume());
+    volume_slider->setMaximumWidth(100);
 
     slider_timer->setSingleShot(false);
     slider_timer->setInterval(100);
@@ -24,8 +28,10 @@ void player_widget::set_layout(){
 
     box->addWidget(pause_button);
     box->addWidget(stop_button);
-    box->addWidget(slider);
+    box->addWidget(duration_slider);
     box->addWidget(duration);
+    box->addWidget(volume_slider);
+    box->addWidget(volume);
 
     setLayout(box);
 }
@@ -36,7 +42,7 @@ void player_widget::set_connections(){
     connect(stop_button, &QPushButton::clicked, this, &player_widget::stop);
 
     connect(slider_timer, &QTimer::timeout, [this]{
-        slider->setValue(1000. / player->duration() * player->position());
+        duration_slider->setValue(1000. / player->duration() * player->position());
     });
 
     connect(duration_timer, &QTimer::timeout, [this]{
@@ -45,20 +51,30 @@ void player_widget::set_connections(){
 
     connect(player, &QMediaPlayer::stateChanged, this, &player_widget::media_status_changed);
 
-    connect(slider, &QSlider::sliderPressed, [this]{
+    connect(duration_slider, &QSlider::sliderPressed, [this]{
         slider_timer->stop();
         duration_timer->stop();
     });
 
-    connect(slider, &QSlider::sliderReleased, [this]{
+    connect(duration_slider, &QSlider::sliderReleased, [this]{
         slider_timer->start();
         duration_timer->start();
 
         seek();
     });
 
-    connect(slider, &QSlider::sliderMoved, [this]{
-        set_duration_string(slider->value() * player->duration() / 1000.);
+    connect(duration_slider, &QSlider::sliderMoved, [this]{
+        set_duration_string(duration_slider->value() * player->duration() / 1000.);
+    });
+
+    connect(volume_slider, &QSlider::sliderReleased, [this]{
+        player->setVolume(volume_slider->value());
+        volume->setText(QString::number(volume_slider->value()));
+    });
+
+    connect(volume_slider, &QSlider::sliderMoved, [this]{
+        player->setVolume(volume_slider->value());
+        volume->setText(QString::number(volume_slider->value()));
     });
 }
 
@@ -80,8 +96,8 @@ void player_widget::set_duration_string(qint64 value){
 
 
 void player_widget::play(){
-    slider->setValue(0);
-    slider->setEnabled(true);
+    duration_slider->setValue(0);
+    duration_slider->setEnabled(true);
 
     duration->setText("00:00");
     player->play();
@@ -119,8 +135,8 @@ void player_widget::media_status_changed(int value){
 
         pause_button->setIcon(style.standardIcon(QStyle::SP_MediaPlay));
 
-        slider->setValue(0);
-        slider->setEnabled(false);
+        duration_slider->setValue(0);
+        duration_slider->setEnabled(false);
 
         duration->setText("--:--");
     }
@@ -133,5 +149,5 @@ void player_widget::stop(){
 
 
 void player_widget::seek(){
-    player->setPosition(slider->value() * player->duration() / 1000.);
+    player->setPosition(duration_slider->value() * player->duration() / 1000.);
 }

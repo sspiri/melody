@@ -28,8 +28,11 @@ public:
     QPushButton* pause_button{new QPushButton{style.standardIcon(QStyle::SP_MediaPlay), "", this}},
                * stop_button{new QPushButton{style.standardIcon(QStyle::SP_MediaStop), "", this}};
 
-    QSlider* slider{new QSlider{Qt::Horizontal, this}};
-    QLabel* duration{new QLabel{"--:--", this}};
+    QSlider* duration_slider{new QSlider{Qt::Horizontal, this}},
+           * volume_slider{new QSlider{Qt::Horizontal, this}};
+
+    QLabel* duration{new QLabel{"--:--", this}},
+          * volume{new QLabel{QString::number(player->volume())}};
 
 public slots:
     void play();
