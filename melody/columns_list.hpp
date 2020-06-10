@@ -37,6 +37,7 @@ private:
         horizontalHeader()->setVisible(true);
         horizontalHeader()->setSectionsMovable(true);
 
+        setSortingEnabled(true);
         setShowGrid(false);
     }
 };

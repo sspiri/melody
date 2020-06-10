@@ -226,7 +226,7 @@ void main_window::play(){
 
         if(items.size()){
             player->player->setPlaylist(list->playlist);
-            list->playlist->setCurrentIndex(list->row(items[0]));
+            list->playlist->setCurrentIndex(items[0]->data(Qt::UserRole).toInt());
             player->play();
         }
     }
@@ -238,7 +238,7 @@ void main_window::play(int row, int ){
 
     if(list){
         player->player->setPlaylist(list->playlist);
-        list->playlist->setCurrentIndex(row);
+        list->playlist->setCurrentIndex(list->item(row, 0)->data(Qt::UserRole).toInt());
         player->play();
     }
 }
@@ -337,13 +337,8 @@ void main_window::select_next_row(int value){
                 while(list->isRowHidden(n))
                     ++n;
 
-                if(n > list->currentRow() + 1){
-                    list->selectRow(n);
-                    play();
-                }
-
-                else
-                    list->selectRow(n);
+                list->selectRow(n);
+                play();
             }
         }
     }

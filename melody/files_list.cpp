@@ -11,6 +11,7 @@ files_list::files_list(search_widget* s, QWidget* parent)
 
 
 void files_list::add_track(const track_t& track){
+    setSortingEnabled(false);
     setRowCount(rowCount() + 1);
 
     std::string title = track.title.toStdString();
@@ -25,19 +26,23 @@ void files_list::add_track(const track_t& track){
 
     auto* item = new QTableWidgetItem{style.standardIcon(QStyle::SP_MediaPlay), title.c_str()};
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    item->setData(Qt::UserRole, rowCount() - 1);
     setItem(rowCount() - 1, 0, item);
 
     item = new QTableWidgetItem{track.artist};
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    item->setData(Qt::UserRole, rowCount() - 1);
     setItem(rowCount() - 1, 1, item);
 
 
     item = new QTableWidgetItem{track.genre};
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    item->setData(Qt::UserRole, rowCount() - 1);
     setItem(rowCount() - 1, 2, item);
 
     item = new QTableWidgetItem{track.album};
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    item->setData(Qt::UserRole, rowCount() - 1);
     setItem(rowCount() - 1, 3, item);
 
     std::string duration_string;
@@ -57,6 +62,7 @@ void files_list::add_track(const track_t& track){
     hide_row(rowCount() - 1);
 
     playlist->addMedia(QUrl::fromLocalFile(track.filepath));
+    setSortingEnabled(true);
 }
 
 
