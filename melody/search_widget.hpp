@@ -13,11 +13,13 @@ public:
         all, title, artist, genre, album
     };
 
+    using info_t = std::pair<type_t, QString>;
+
     explicit search_widget(QWidget* parent);
 
     QLineEdit* edit{new QLineEdit{this}};
 
-    std::pair<type_t, QString> get_search_options() const{
+    info_t get_search_options() const{
         QString s = edit->text();
         int pos = s.indexOf(':');
 

@@ -6,8 +6,8 @@
 #include<iostream>
 
 
-files_list::files_list(QWidget* parent)
-    : columns_list{{"Title", "Artist", "Genre", "Album", "Duration"}, parent} {}
+files_list::files_list(search_widget* s, QWidget* parent)
+    : columns_list{{"Title", "Artist", "Genre", "Album", "Duration"}, parent}, search{s} {}
 
 
 void files_list::add_track(const track_t& track){
@@ -53,8 +53,10 @@ void files_list::add_track(const track_t& track){
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
     setItem(rowCount() - 1, 4, item);
 
-    playlist->addMedia(QUrl::fromLocalFile(track.filepath));
     resizeColumnsToContents();
+    hide_row(rowCount() - 1);
+
+    playlist->addMedia(QUrl::fromLocalFile(track.filepath));
 }
 
 
@@ -77,8 +79,55 @@ void files_list::remove_tracks(){
 }
 
 
+void files_list::hide_row(int row){
+    auto info = search->get_search_options();
 
-void files_list::hide_rows(const std::pair<search_widget::type_t, QString>& info){
+    switch(info.first){
+    case search_widget::type_t::all:
+        if(item(row, 0)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0
+           && item(row, 1)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0
+           && item(row, 2)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0
+           && item(row, 3)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0){
+
+            hideRow(row);
+        }
+
+        else
+            showRow(row);
+        break;
+
+    case search_widget::type_t::title:
+        if(item(row, 0)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0)
+            hideRow(row);
+        else
+            showRow(row);
+        break;
+
+    case search_widget::type_t::artist:
+        if(item(row, 1)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0)
+            hideRow(row);
+        else
+            showRow(row);
+        break;
+
+    case search_widget::type_t::genre:
+        if(item(row, 2)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0)
+            hideRow(row);
+        else
+            showRow(row);
+        break;
+
+    case search_widget::type_t::album:
+        if(item(row, 3)->text().indexOf(info.second, 0, Qt::CaseInsensitive) < 0)
+            hideRow(row);
+        else
+            showRow(row);
+        break;
+    }
+}
+
+
+void files_list::hide_rows(const search_widget::info_t& info){
     switch(info.first){
     case search_widget::type_t::all:
         for(int n{}; n < rowCount(); ++n){

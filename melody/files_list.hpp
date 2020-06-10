@@ -12,20 +12,23 @@
 
 class files_list : public columns_list{
 public slots:
-    void hide_rows(const std::pair<search_widget::type_t, QString>& info);
+    void hide_rows(const search_widget::info_t& info);
     void add_track(const track_t& track);
 
     void remove_selected_tracks();
     void remove_tracks();
 
 public:
-    explicit files_list(QWidget* parent);
+    files_list(search_widget* s, QWidget* parent);
 
     std::ptrdiff_t index{-1};
     QMediaPlaylist* playlist{new QMediaPlaylist{this}};
 
 private:
     QCommonStyle style;
+    search_widget* search;
+
+    void hide_row(int row);
 };
 
 

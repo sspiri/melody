@@ -40,11 +40,12 @@ private slots:
 
     void play();
     void play(int row, int );
-
-    void on_search();
+    void select_next_row(int value);
 
     void close_tab(int index);
-    void select_next_row(int value);
+    void tab_context_menu(int index);
+
+    void on_search();
 
     void show_error_message(const QString& message);
 

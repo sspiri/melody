@@ -85,9 +85,10 @@ void main_window::set_connections(){
             play();
     });
 
-    connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(tabs, &QTabWidget::tabCloseRequested, this, &main_window::close_tab);
+    connect(tabs, &QTabWidget::tabBarClicked, this, &main_window::tab_context_menu);
 
+    connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
 }
 
@@ -130,7 +131,7 @@ void main_window::remove_tracks(){
 
 
 files_list* main_window::create_tab(const QString& name){
-    auto* list = new files_list{this};
+    auto* list = new files_list{search, this};
     player->player->setPlaylist(list->playlist);
 
     tabs->addTab(list, name);
@@ -290,6 +291,30 @@ void main_window::close_tab(int index){
 
         tabs->removeTab(index);
     }
+}
+
+
+void main_window::tab_context_menu(int index){
+    QMenu* menu = new QMenu{this};
+
+    connect(menu->addAction("Rename..."), &QAction::triggered, [this, index]{
+        auto* dialog = new name_dialog{this};
+
+        if(dialog->exec() == QDialog::Accepted){
+            QString old_name = tabs->tabText(index);
+            tabs->setTabText(index, dialog->get_name());
+            settings.config_dir.rename(old_name, tabs->tabText(index));
+        }
+
+        dialog->deleteLater();
+    });
+
+    connect(menu->addAction("Remove"), &QAction::triggered, [this, index]{
+        close_tab(index);
+    });
+
+    menu->exec(QCursor::pos());
+    menu->deleteLater();
 }
 
 
