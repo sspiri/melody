@@ -33,7 +33,7 @@ public:
 
 public slots:
     void play();
-    void pause();
+    void pause_resume();
     void stop();
 
 private slots:

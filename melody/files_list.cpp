@@ -7,10 +7,7 @@
 
 
 files_list::files_list(QWidget* parent)
-    : columns_list{{"Title", "Artist", "Genre", "Album", "Duration"}, parent}{
-
-    connect(playlist, &QMediaPlaylist::currentIndexChanged, this, &QTableWidget::selectRow);
-}
+    : columns_list{{"Title", "Artist", "Genre", "Album", "Duration"}, parent} {}
 
 
 void files_list::add_track(const track_t& track){

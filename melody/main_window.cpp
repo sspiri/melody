@@ -77,17 +77,18 @@ void main_window::set_connections(){
 
     connect(player, &player_widget::error, this, &main_window::show_error_message);
 
-    connect(new QShortcut{Qt::Key_Enter, this}, &QShortcut::activated, this, (void(main_window::*)())&main_window::play);
-    connect(new QShortcut{Qt::Key_Space, this}, &QShortcut::activated, player, &player_widget::pause);
+    connect(new QShortcut{Qt::Key_Return, this}, &QShortcut::activated, this, (void(main_window::*)())&main_window::play);
+    connect(new QShortcut{Qt::Key_Space, this}, &QShortcut::activated, player, &player_widget::pause_resume);
 
+    connect(player->pause_button, &QPushButton::clicked, [this]{
+        if(player->player->state() == QMediaPlayer::StoppedState)
+            play();
+    });
+
+    connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(tabs, &QTabWidget::tabCloseRequested, this, &main_window::close_tab);
 
-    connect(search->edit, &QLineEdit::textChanged, [this]{
-        auto* list = (files_list*)tabs->currentWidget();
-
-        if(list)
-            list->hide_rows(search->get_search_options());
-    });
+    connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
 }
 
 
@@ -288,6 +289,26 @@ void main_window::close_tab(int index){
             iterators[list].iterator->cancel();
 
         tabs->removeTab(index);
+    }
+}
+
+
+void main_window::on_search(){
+    auto* list = (files_list*)tabs->currentWidget();
+
+    if(list)
+        list->hide_rows(search->get_search_options());
+}
+
+
+void main_window::select_next_row(int value){
+    if(value == QMediaPlayer::EndOfMedia){
+        for(int n{}; n < tabs->count(); ++n){
+            auto* p = (files_list*)tabs->widget(n);
+
+            if(p->playlist == player->player->playlist())
+                p->selectRow(p->currentRow() + 1);
+        }
     }
 }
 

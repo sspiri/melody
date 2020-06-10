@@ -32,7 +32,7 @@ void player_widget::set_layout(){
 
 
 void player_widget::set_connections(){
-    connect(pause_button, &QPushButton::clicked, this, &player_widget::pause);
+    connect(pause_button, &QPushButton::clicked, this, &player_widget::pause_resume);
     connect(stop_button, &QPushButton::clicked, this, &player_widget::stop);
 
     connect(slider_timer, &QTimer::timeout, [this]{
@@ -88,8 +88,12 @@ void player_widget::play(){
 }
 
 
-void player_widget::pause(){
-    player->pause();
+void player_widget::pause_resume(){
+    if(player->state() == QMediaPlayer::PlayingState)
+        player->pause();
+
+    else if(player->state() == QMediaPlayer::PausedState)
+        player->play();
 }
 
 
