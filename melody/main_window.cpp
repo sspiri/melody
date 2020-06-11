@@ -91,6 +91,13 @@ void main_window::set_connections(){
 
     connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
+
+    connect(new QShortcut{Qt::Key_Delete, this}, &QShortcut::activated, [this]{
+        auto* list = (files_list*)tabs->currentWidget();
+
+        if(list)
+            list->remove_selected_tracks();
+    });
 }
 
 
@@ -99,7 +106,21 @@ void main_window::open_playlist(){
     QString filepath = QFileDialog::getOpenFileName(this, "Select file", music_location.size() > 0 ? music_location[0] : QDir::homePath());
 
     if(filepath.size()){
-        auto* list = create_tab(QFileInfo{filepath}.fileName());
+        QString filename = QFileInfo{filepath}.fileName();
+        files_list* list;
+
+        if(filepath.endsWith(".PLAYLIST", Qt::CaseInsensitive))
+            list = create_tab(filename.mid(0, filename.lastIndexOf('.')));
+
+        else{
+            list = new files_list{settings.config_dir.absoluteFilePath(filename), search, this};
+
+            tabs->addTab(list, filename);
+            tabs->setCurrentWidget(list);
+
+            connect(list, &QTableView::doubleClicked, this, (void(main_window::*)(const QModelIndex& ))&main_window::play);
+        }
+
         tabs->setCurrentWidget(list);
 
         auto* reader = new playlist_reader{filepath, this};
@@ -132,14 +153,12 @@ void main_window::remove_tracks(){
 
 
 files_list* main_window::create_tab(const QString& name){
-    auto* list = new files_list{search, this};
-    player->player->setPlaylist(list->playlist);
+    auto* list = new files_list{settings.config_dir.absoluteFilePath(name + ".playlist"), search, this};
 
     tabs->addTab(list, name);
     tabs->setCurrentWidget(list);
 
-    connect(list, &QTableWidget::cellDoubleClicked, this, (void(main_window::*)(int, int))&main_window::play);
-    connect(new QShortcut{Qt::Key_Delete, this}, &QShortcut::activated, list, &files_list::remove_selected_tracks);
+    connect(list, &QTableView::doubleClicked, this, (void(main_window::*)(const QModelIndex& ))&main_window::play);
 
     return list;
 }
@@ -160,16 +179,16 @@ void main_window::browse_tracks(){
         if(files.size()){
             fs::create_directories(settings.config_dir.absolutePath().toStdString());
 
-            QString tabname = tabs->tabText(tabs->currentIndex());
-            QString save_filepath = settings.config_dir.absoluteFilePath(tabname);
-
-            auto* thread = new playlist_writer{save_filepath, files, this};
+            auto* thread = new playlist_writer{list->filepath, files, this};
             auto* progress = new progress_widget{thread, number_of_regular_files(files)};
 
             iterators[list] = {thread, progress};
             load_files(list);
         }
     }
+
+    else
+        QMessageBox::critical(this, "Error", "First select or create a playlist.");
 }
 
 
@@ -188,18 +207,18 @@ void main_window::browse_library(){
         if(filepath.size()){
             fs::create_directories(settings.config_dir.absolutePath().toStdString());
 
-            QString tabname = tabs->tabText(tabs->currentIndex());
-            QString save_filepath = settings.config_dir.absoluteFilePath(tabname);
-
             auto nfiles = number_of_files(filepath.toStdString(), fs::directory_options::skip_permission_denied, fs::file_type::regular);
 
-            auto* thread = new playlist_writer{save_filepath, {filepath}, this};
+            auto* thread = new playlist_writer{list->filepath, {filepath}, this};
             auto* progress = new progress_widget{thread, nfiles};
 
             iterators[list] = {thread, progress};
             load_files(list);
         }
     }
+
+    else
+        QMessageBox::critical(this, "Error", "First select or create a playlist.");
 }
 
 
@@ -223,23 +242,23 @@ void main_window::play(){
     auto* list = (files_list*)tabs->currentWidget();
 
     if(list){
-        auto items = list->selectedItems();
+        auto items = list->selectionModel()->selectedRows();
 
         if(items.size()){
             player->player->setPlaylist(list->playlist);
-            list->playlist->setCurrentIndex(items[0]->data(Qt::UserRole).toInt());
+            list->playlist->setCurrentIndex(list->sorted_model->mapToSource(items[0]).row());
             player->play();
         }
     }
 }
 
 
-void main_window::play(int row, int ){
+void main_window::play(const QModelIndex& index){
     auto* list = (files_list*)tabs->currentWidget();
 
     if(list){
         player->player->setPlaylist(list->playlist);
-        list->playlist->setCurrentIndex(list->item(row, 0)->data(Qt::UserRole).toInt());
+        list->playlist->setCurrentIndex(list->sorted_model->mapToSource(index).row());
         player->play();
     }
 }
@@ -252,13 +271,12 @@ void main_window::show_error_message(const QString& message){
 
 void main_window::load_playlists(){
     for(fs::directory_iterator it{settings.config_dir.absolutePath().toStdString()}, end_it; it != end_it; ++it){
-        if(fs::is_regular_file(it->path())){
-            auto* list = create_tab(it->path().filename().c_str());
+        QString filename{it->path().filename().c_str()};
 
-            QString tabname = tabs->tabText(tabs->indexOf(list));
-            QString filepath = settings.config_dir.absoluteFilePath(tabname);
+        if(fs::is_regular_file(it->path()) && filename.endsWith(".PLAYLIST", Qt::CaseInsensitive)){
+            auto* list = create_tab(filename.mid(0, filename.lastIndexOf('.')));
 
-            auto* reader = new playlist_reader{filepath, this};
+            auto* reader = new playlist_reader{list->filepath, this};
             reader->construct_playlist();
 
             auto* progress = new progress_widget{reader, reader->filepaths.size()};
@@ -278,7 +296,7 @@ void main_window::close_tab(int index){
                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
     if(ret == QMessageBox::Yes){
-        fs::remove(settings.config_dir.absoluteFilePath(name).toStdString());
+        fs::remove(list->filepath.toStdString());
 
         if(iterators.find(list) != iterators.end())
             iterators[list].iterator->cancel();
@@ -304,9 +322,11 @@ void main_window::tab_context_menu(const QPoint& point){
             auto* dialog = new name_dialog{this};
 
             if(dialog->exec() == QDialog::Accepted){
-                QString old_name = tabs->tabText(index);
+                auto* list = (files_list*)tabs->widget(index);
+
+                QString old_filepath = list->filepath;
                 tabs->setTabText(index, dialog->get_name());
-                settings.config_dir.rename(old_name, tabs->tabText(index));
+                settings.config_dir.rename(old_filepath, tabs->tabText(index) + ".playlist");
             }
 
             dialog->deleteLater();
@@ -327,7 +347,7 @@ void main_window::on_search(){
     auto* list = (files_list*)tabs->currentWidget();
 
     if(list)
-        list->hide_rows(search->get_search_options());
+        list->hide_rows();
 }
 
 
@@ -337,13 +357,24 @@ void main_window::select_next_row(int value){
             auto* list = (files_list*)tabs->widget(n);
 
             if(list->playlist == player->player->playlist()){
-                int n = list->currentRow() + 1;
+                auto index = list->selectionModel()->currentIndex();
 
-                while(list->isRowHidden(n))
-                    ++n;
+                do{
+                    index = list->std_model->index(index.row() + 1, 0);
+                } while(index.row() != -1 && list->isRowHidden(index.row()));
 
-                list->selectRow(n);
-                play();
+                if(index.row() == -1){
+                    player->stop();
+                    return;
+                }
+
+                list->selectRow(index.row());
+                auto indexes = list->sorted_model->mapSelectionToSource(list->selectionModel()->selection()).indexes();
+
+                if(indexes.size()){
+                    list->playlist->setCurrentIndex(indexes[0].row());
+                    player->play();
+                }
             }
         }
     }

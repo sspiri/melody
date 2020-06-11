@@ -4,27 +4,28 @@
 
 #include <functional>
 
-#include <QTableWidget>
+#include <QStandardItemModel>
+#include <QSortFilterProxyModel>
+#include <QTableView>
 #include <QHeaderView>
 #include <QMenu>
 
 
-class columns_list : public QTableWidget{
+class columns_list : public QTableView{
 public:
-    columns_list(QWidget* parent = nullptr) : QTableWidget{parent}{
-        setup_columns_list({});
+    QStandardItemModel* std_model{new QStandardItemModel{this}};
+    QSortFilterProxyModel* sorted_model{new QSortFilterProxyModel{this}};
+
+    columns_list(QWidget* parent = nullptr) : QTableView{parent}{
+        setup_columns_list(0, {});
     }
 
-    columns_list(const QStringList& labels, QWidget* parent = nullptr)
-        : QTableWidget{0, labels.size(), parent}{
-
-        setup_columns_list(labels);
+    columns_list(const QStringList& labels, QWidget* parent = nullptr) : QTableView{parent}{
+        setup_columns_list(0, labels);
     }
 
-    columns_list(int rows, const QStringList& labels, QWidget* parent = nullptr)
-        : QTableWidget{rows, labels.size(), parent}{
-
-        setup_columns_list(labels);
+    columns_list(int rows, const QStringList& labels, QWidget* parent = nullptr) : QTableView{parent}{
+        setup_columns_list(rows, labels);
     }
 
     virtual ~columns_list() {}
@@ -35,8 +36,9 @@ private slots:
     }
 
     int get_index_by_label(const QString& label){
+
         for(int n{}; n < horizontalHeader()->count(); ++n){
-            if(horizontalHeaderItem(n)->text() == label)
+            if(sorted_model->headerData(n, Qt::Horizontal).toString() == label)
                 return n;
         }
 
@@ -48,7 +50,7 @@ private:
 
     void setup_context_menu(){
         auto create_action = [this](const QString& label){
-            auto* action = menu->addAction("Show " + label);
+            auto* action = menu->addAction(label);
             action->setCheckable(true);
             action->setChecked(true);
 
@@ -60,24 +62,32 @@ private:
             });
         };
 
-        create_action("Artist");
-        create_action("Genre");
-        create_action("Album");
-        create_action("Duration");
+        for(int n{1}; n < horizontalHeader()->count(); ++n)
+            create_action(sorted_model->headerData(n, Qt::Horizontal).toString());
     }
 
-    void setup_columns_list(const QStringList& labels){
+    void setup_columns_list(int rows, const QStringList& labels){
+        sorted_model->setSourceModel(std_model);
+        setModel(sorted_model);
+
+        std_model->setRowCount(rows);
+        std_model->setColumnCount(labels.size());
+
         horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(horizontalHeader(), &QHeaderView::customContextMenuRequested, this, &columns_list::open_context_menu);
+
+        for(int n{}; n < labels.size(); ++n)
+            sorted_model->setHeaderData(n, Qt::Horizontal, labels[n], Qt::DisplayRole);
+
         setup_context_menu();
 
-        setSelectionBehavior(QTableWidget::SelectRows);
-        setHorizontalHeaderLabels(labels);
+        setSelectionBehavior(QTableView::SelectRows);
 
         verticalHeader()->setVisible(false);
         horizontalHeader()->setVisible(true);
         horizontalHeader()->setSectionsMovable(true);
 
+        setAlternatingRowColors(true);
         setSortingEnabled(true);
         setShowGrid(false);
     }

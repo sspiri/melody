@@ -39,7 +39,7 @@ private slots:
     void browse_tracks();
 
     void play();
-    void play(int row, int );
+    void play(const QModelIndex& index);
     void select_next_row(int value);
 
     void close_tab(int index);

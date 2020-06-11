@@ -12,16 +12,16 @@
 
 class files_list : public columns_list{
 public slots:
-    void hide_rows(const search_widget::info_t& info);
+    void hide_rows();
     void add_track(const track_t& track);
 
     void remove_selected_tracks();
     void remove_tracks();
 
 public:
-    files_list(search_widget* s, QWidget* parent);
+    files_list(const QString& fp, search_widget* s, QWidget* parent);
 
-    std::ptrdiff_t index{-1};
+    QString filepath;
     QMediaPlaylist* playlist{new QMediaPlaylist{this}};
 
 private:
@@ -29,6 +29,7 @@ private:
     search_widget* search;
 
     void hide_row(int row);
+    void save();
 };
 
 
