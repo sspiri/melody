@@ -72,7 +72,7 @@ void files_list::add_track(const track_t& track){
 }
 
 
-void files_list::remove_selected_tracks(){
+void files_list::remove_selected_tracks(player_widget* player){
     std::set<QModelIndex> playlist_rows, item_rows;
 
     for(const auto& index : sorted_model->mapSelectionToSource(selectionModel()->selection()).indexes()){
@@ -80,9 +80,37 @@ void files_list::remove_selected_tracks(){
             playlist_rows.insert(index);
     }
 
+    auto media = playlist->currentMedia();
+    auto position = player->player->position();
+    auto duration = player->player->duration();
+    auto state = player->player->state();
+
     for(auto it = playlist_rows.rbegin(); it != playlist_rows.rend(); ++it){
         playlist->removeMedia(it->row());
         sorted_model->removeRow(sorted_model->mapFromSource(*it).row());
+    }
+
+    if(state == QMediaPlayer::PlayingState || state == QMediaPlayer::PausedState){
+        int n{};
+
+        for( ; n < playlist->mediaCount(); ++n){
+            if(playlist->media(n) == media){
+                playlist->setCurrentIndex(n);
+
+                player->player->setPosition(position);
+                player->play();
+
+                player->duration_slider->setValue(1000. / duration * position);
+
+                if(state == QMediaPlayer::PausedState)
+                    player->pause_resume();
+
+                break;
+            }
+        }
+
+        if(n >= playlist->mediaCount())
+            player->stop();
     }
 
     save();

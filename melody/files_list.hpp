@@ -2,6 +2,7 @@
 #define FILES_LIST_HPP
 
 
+#include "player_widget.hpp"
 #include "search_widget.hpp"
 #include "columns_list.hpp"
 #include "track_t.hpp"
@@ -15,7 +16,7 @@ public slots:
     void hide_rows();
     void add_track(const track_t& track);
 
-    void remove_selected_tracks();
+    void remove_selected_tracks(player_widget* player);
     void remove_tracks();
 
 public:

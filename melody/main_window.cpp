@@ -81,6 +81,13 @@ void main_window::set_connections(){
     connect(new QShortcut{Qt::Key_Return, this}, &QShortcut::activated, this, (void(main_window::*)())&main_window::play);
     connect(new QShortcut{Qt::Key_Space, this}, &QShortcut::activated, player, &player_widget::pause_resume);
 
+    connect(new QShortcut{Qt::Key_Delete, this}, &QShortcut::activated, [this]{
+        auto* list = (files_list*)tabs->currentWidget();
+
+        if(list)
+            list->remove_selected_tracks(player);
+    });
+
     connect(player->pause_button, &QPushButton::clicked, [this]{
         if(player->player->state() == QMediaPlayer::StoppedState)
             play();
@@ -91,13 +98,6 @@ void main_window::set_connections(){
 
     connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
     connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
-
-    connect(new QShortcut{Qt::Key_Delete, this}, &QShortcut::activated, [this]{
-        auto* list = (files_list*)tabs->currentWidget();
-
-        if(list)
-            list->remove_selected_tracks();
-    });
 }
 
 
