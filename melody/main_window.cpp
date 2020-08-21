@@ -80,6 +80,8 @@ void main_window::set_connections(){
 
     connect(new QShortcut{Qt::Key_Return, this}, &QShortcut::activated, this, (void(main_window::*)())&main_window::play);
     connect(new QShortcut{Qt::Key_Space, this}, &QShortcut::activated, player, &player_widget::pause_resume);
+    connect(new QShortcut{Qt::Key_Tab, this}, &QShortcut::activated, std::bind(&main_window::select_next_row, this, 1));
+    connect(new QShortcut{Qt::Key_Backtab, this}, &QShortcut::activated, std::bind(&main_window::select_next_row, this, -1));
 
     connect(new QShortcut{Qt::Key_Delete, this}, &QShortcut::activated, [this]{
         auto* list = (files_list*)tabs->currentWidget();
@@ -96,7 +98,11 @@ void main_window::set_connections(){
     connect(tabs, &QTabWidget::tabCloseRequested, this, &main_window::close_tab);
     connect(tabs, &QTabWidget::customContextMenuRequested, this, &main_window::tab_context_menu);
 
-    connect(player->player, &QMediaPlayer::mediaStatusChanged, this, &main_window::select_next_row);
+    connect(player->player, &QMediaPlayer::mediaStatusChanged, [this](int value){
+        if(value == QMediaPlayer::EndOfMedia)
+            select_next_row(1);
+    });
+
     connect(search->edit, &QLineEdit::textChanged, this, &main_window::on_search);
 }
 
@@ -351,30 +357,28 @@ void main_window::on_search(){
 }
 
 
-void main_window::select_next_row(int value){
-    if(value == QMediaPlayer::EndOfMedia){
-        for(int n{}; n < tabs->count(); ++n){
-            auto* list = (files_list*)tabs->widget(n);
+void main_window::select_next_row(unsigned step){
+    for(int n{}; n < tabs->count(); ++n){
+        auto* list = (files_list*)tabs->widget(n);
 
-            if(list->playlist == player->player->playlist()){
-                auto index = list->selectionModel()->currentIndex();
+        if(list->playlist == player->player->playlist()){
+            auto index = list->selectionModel()->currentIndex();
 
-                do{
-                    index = list->std_model->index(index.row() + 1, 0);
-                } while(index.row() != -1 && list->isRowHidden(index.row()));
+            do{
+                index = list->std_model->index(index.row() + step, 0);
+            } while(index.row() != -1 && list->isRowHidden(index.row()));
 
-                if(index.row() == -1){
-                    player->stop();
-                    return;
-                }
+            if(index.row() == -1){
+                player->stop();
+                return;
+            }
 
-                list->selectRow(index.row());
-                auto indexes = list->sorted_model->mapSelectionToSource(list->selectionModel()->selection()).indexes();
+            list->selectRow(index.row());
+            auto indexes = list->sorted_model->mapSelectionToSource(list->selectionModel()->selection()).indexes();
 
-                if(indexes.size()){
-                    list->playlist->setCurrentIndex(indexes[0].row());
-                    player->play();
-                }
+            if(indexes.size()){
+                list->playlist->setCurrentIndex(indexes[0].row());
+                player->play();
             }
         }
     }
