@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <chrono>
 
+#include <QString>
+
 #include "filesystem.hpp"
 
 
@@ -62,6 +64,15 @@ inline std::uintmax_t number_of_files(const std::filesystem::path& path, std::fi
     }
 
     return result + (fs::status(path).type() == type);
+}
+
+
+inline QString path2qstring(const wchar_t* path){
+    return QString::fromWCharArray(path);
+}
+
+inline QString path2qstring(const char* path){
+    return path;
 }
 
 

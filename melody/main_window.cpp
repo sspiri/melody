@@ -277,7 +277,7 @@ void main_window::show_error_message(const QString& message){
 
 void main_window::load_playlists(){
     for(fs::directory_iterator it{settings.config_dir.absolutePath().toStdString()}, end_it; it != end_it; ++it){
-        QString filename{it->path().filename().c_str()};
+        QString filename{path2qstring(it->path().filename().c_str())};
 
         if(fs::is_regular_file(it->path()) && filename.endsWith(".PLAYLIST", Qt::CaseInsensitive)){
             auto* list = create_tab(filename.mid(0, filename.lastIndexOf('.')));

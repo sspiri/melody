@@ -1,7 +1,7 @@
 QT += quick widgets multimedia
 CONFIG += c++17
-QMAKE_CXXFLAGS += -std=c++17
-LIBS += -ltag -lstdc++fs
+unix:QMAKE_CXXFLAGS += -std=c++17
+unix:LIBS += -ltag -lstdc++fs
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -52,3 +52,9 @@ HEADERS += \
     track_iterator.hpp \
     track_t.hpp \
     utility.hpp
+
+win32:DEFINES += "TAGLIB_STATIC"
+win32:LIBS += -L$$PWD/../../../taglib/lib/ -ltag
+
+win32:INCLUDEPATH += $$PWD/../../../taglib/include
+win32:DEPENDPATH += $$PWD/../../../taglib/include

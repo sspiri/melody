@@ -3,6 +3,8 @@
 
 
 #include <fstream>
+
+#include "utility.hpp"
 #include "track_iterator.hpp"
 
 
@@ -47,7 +49,7 @@ private:
                 throw quit_exception{};
 
             if(fs::is_regular_file(it->path())){
-                add_track(it->path().c_str());
+                add_track(path2qstring(it->path().c_str()));
                 stream << std::quoted(it->path().string()) << std::endl;
             }
         }
