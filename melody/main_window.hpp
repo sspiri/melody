@@ -75,6 +75,7 @@ private:
     void load_files(files_list* list);
     void cancel_all();
 
+    void first_start();
     void load_playlists();
 };
 

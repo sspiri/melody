@@ -36,7 +36,7 @@ main_window::main_window(){
         load_playlists();
 
     if(!tabs->count())
-        create_tab("Playlist");
+        first_start();
 
     set_layout();
     set_connections();
@@ -277,7 +277,11 @@ void main_window::show_error_message(const QString& message){
 
 void main_window::load_playlists(){
     for(fs::directory_iterator it{settings.config_dir.absolutePath().toStdString()}, end_it; it != end_it; ++it){
-        QString filename{path2qstring(it->path().filename().c_str())};
+#ifdef Q_OS_WINDOWS
+        QString filename{QString::fromWCharArray(it->path().filename().c_str())};
+#else
+        QString filename{it->path().filename().c_str()};
+#endif
 
         if(fs::is_regular_file(it->path()) && filename.endsWith(".PLAYLIST", Qt::CaseInsensitive)){
             auto* list = create_tab(filename.mid(0, filename.lastIndexOf('.')));
@@ -389,5 +393,26 @@ void main_window::cancel_all(){
     for(auto& it : iterators){
         if(it.second.iterator && it.second.iterator->isRunning())
             it.second.iterator->cancel();
+    }
+}
+
+
+void main_window::first_start(){
+    auto* list = create_tab("Playlist");
+
+    int ret = QMessageBox::information(this, "Load Library", "Do you want to load the entire music library?",
+                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+    if(ret == QMessageBox::Yes){
+        auto music_library = QStandardPaths::standardLocations(QStandardPaths::MusicLocation)[0];
+        fs::create_directories(settings.config_dir.absolutePath().toStdString());
+
+        auto nfiles = number_of_files(music_library.toStdString(), fs::directory_options::skip_permission_denied, fs::file_type::regular);
+
+        auto* thread = new playlist_writer{list->filepath, {music_library}, this};
+        auto* progress = new progress_widget{thread, nfiles};
+
+        iterators[list] = {thread, progress};
+        load_files(list);
     }
 }
